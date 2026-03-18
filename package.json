@@ -1,0 +1,13 @@
+{
+  "name": "passit",
+  "version": "1.0.0",
+  "description": "Instant login-free command sharing for devs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ioredis": "^5.10.0"
+  }
+}

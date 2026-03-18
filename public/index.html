@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PassIt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --bg2: #111111;
+      --bg3: #1a1a1a;
+      --border: #2a2a2a;
+      --border-active: #3d3d3d;
+      --text: #e8e6e1;
+      --muted: #666;
+      --accent: #d4ff00;
+      --accent2: #00ffd4;
+      --danger: #ff4444;
+      --success: #44ff88;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Space Mono', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* mobile fixes */
+    @media (max-width: 480px) {
+      header { padding: 20px 0 16px; gap: 10px; flex-wrap: wrap; }
+      .tagline { display: none; }
+      .tabs { margin: 16px 0 0; }
+      .panel { padding: 20px 0; }
+      .code-body { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .ttl-bar-wrap { width: 100%; }
+      .code-meta { width: 100%; text-align: left; }
+      .big-code { font-size: 36px; }
+      .code-input { font-size: 22px; letter-spacing: 0.2em; }
+      .btn { padding: 10px 14px; font-size: 11px; }
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* HEADER */
+    header {
+      padding: 32px 0 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .tagline {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      margin-left: auto;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* TAB SWITCHER */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin: 24px 0 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .tab::before {
+      content: attr(data-prefix);
+      color: var(--border-active);
+      margin-right: 6px;
+    }
+
+    .tab:first-child { border-right: 1px solid var(--border); }
+
+    .tab.active {
+      background: var(--bg3);
+      color: var(--accent);
+    }
+
+    .tab:hover:not(.active) {
+      background: var(--bg2);
+      color: var(--text);
+    }
+
+    /* PANELS */
+    .panel { display: none; padding: 28px 0; }
+    .panel.active { display: block; }
+
+    .prompt-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .prompt-line .ps1 { color: var(--accent2); }
+    .prompt-line .cmd { color: var(--text); }
+
+    /* TEXTAREA */
+    .input-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      padding: 14px 16px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+      caret-color: var(--accent);
+    }
+
+    textarea:focus {
+      border-color: var(--border-active);
+    }
+
+    textarea::placeholder { color: #444; }
+
+    .char-count {
+      position: absolute;
+      bottom: 10px;
+      right: 12px;
+      font-size: 10px;
+      color: #444;
+      pointer-events: none;
+      transition: color 0.2s;
+    }
+
+    .char-count.warn { color: var(--danger); }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      background: #c8f000;
+      box-shadow: 0 0 16px rgba(212,255,0,0.25);
+    }
+
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg3);
+      border-color: var(--border-active);
+    }
+
+    /* CODE RESULT */
+    .code-result {
+      display: none;
+      margin-top: 20px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .code-result.visible { display: block; }
+
+    .code-header {
+      padding: 8px 14px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .code-body {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: var(--bg2);
+    }
+
+    .big-code {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(212,255,0,0.3);
+    }
+
+    .code-meta {
+      text-align: right;
+    }
+
+    .ttl-bar-wrap {
+      width: 120px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .ttl-bar {
+      height: 100%;
+      width: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 1s linear;
+    }
+
+    .ttl-label {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* RECEIVE PANEL */
+    .code-input-wrap {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .code-input {
+      flex: 1;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color 0.15s;
+      caret-color: var(--accent);
+      text-align: center;
+    }
+
+    .code-input:focus { border-color: var(--border-active); }
+    .code-input::placeholder {
+      color: #333;
+      letter-spacing: 0.2em;
+    }
+
+    /* OUTPUT */
+    .output-wrap {
+      display: none;
+      animation: slideIn 0.2s ease;
+    }
+
+    .output-wrap.visible { display: block; }
+
+    .output-header {
+      padding: 8px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .output-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 0 0 4px 4px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--accent2);
+      min-height: 60px;
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .copy-btn.copied {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--bg3);
+      border: 1px solid var(--border-active);
+      border-radius: 4px;
+      padding: 10px 18px;
+      font-size: 12px;
+      color: var(--text);
+      opacity: 0;
+      transition: all 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error { border-color: var(--danger); color: var(--danger); }
+    .toast.success { border-color: var(--success); color: var(--success); }
+
+    /* FOOTER */
+    footer {
+      margin-top: auto;
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #444;
+      letter-spacing: 0.06em;
+    }
+
+    /* SPINNER */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 0.6s linear infinite; }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+  <header>
+    <div>
+      <div class="logo">Pass<span>It</span></div>
+      <div class="tagline">instant command relay · no login · no trace</div>
+    </div>
+    <div class="status-dot" title="Server online"></div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-prefix="01" data-tab="send" onclick="switchTab('send')">Send</button>
+    <button class="tab" data-prefix="02" data-tab="receive" onclick="switchTab('receive')">Receive</button>
+  </div>
+
+  <!-- SEND PANEL -->
+  <div class="panel active" id="panel-send">
+    <div class="prompt-line">
+      <span class="ps1">passit</span>
+      <span class="muted">→</span>
+      <span class="cmd">new payload</span>
+    </div>
+
+    <div class="input-wrap">
+      <textarea
+        id="send-text"
+        placeholder="sudo dnf install neovim&#10;export PATH=$HOME/.local/bin:$PATH&#10;..."
+        oninput="updateCharCount()"
+        onkeydown="if(event.ctrlKey && event.key==='Enter') sendPayload()"
+        maxlength="5000"
+      ></textarea>
+      <span class="char-count" id="char-count">0 / 5000</span>
+    </div>
+
+    <button class="btn btn-primary" id="send-btn" onclick="sendPayload()">
+      → transmit
+    </button>
+
+    <div class="code-result" id="code-result">
+      <div class="code-header">
+        <span>access code generated</span>
+        <span id="ttl-text">90s</span>
+      </div>
+      <div class="code-body">
+        <div class="big-code" id="generated-code">—</div>
+        <div class="code-meta">
+          <div class="ttl-bar-wrap">
+            <div class="ttl-bar" id="ttl-bar"></div>
+          </div>
+          <div class="ttl-label">expires in <span id="ttl-count">90</span>s</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECEIVE PANEL -->
+  <div class="panel" id="panel-receive">
+    <div class="prompt-line">
+      <span class="ps1">passit</span>
+      <span class="muted">→</span>
+      <span class="cmd">fetch payload</span>
+    </div>
+
+    <div class="code-input-wrap">
+      <input
+        type="text"
+        class="code-input"
+        id="code-input"
+        placeholder="_ _ _ _ _"
+        maxlength="5"
+        inputmode="numeric"
+        oninput="onCodeInput()"
+        onkeydown="if(event.key==='Enter') receivePayload()"
+      />
+      <button class="btn btn-primary" id="receive-btn" onclick="receivePayload()">
+        → fetch
+      </button>
+    </div>
+
+    <div class="output-wrap" id="output-wrap">
+      <div class="output-header">
+        <span>payload received</span>
+        <button class="copy-btn" id="copy-btn" onclick="copyOutput()">⎘ copy</button>
+      </div>
+      <div class="output-box" id="output-box"></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>one-time · 90s ttl · lan-ready</span>
+    <span id="footer-ip">http://localhost:3000</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Init
+  window.onload = () => {
+    document.getElementById('send-text').focus();
+    document.getElementById('footer-ip').textContent = window.location.origin;
+
+    // paste-to-auto-fetch on code input
+    document.getElementById('code-input').addEventListener('paste', () => {
+      setTimeout(receivePayload, 50);
+    });
+
+    // click big code to copy it
+    document.getElementById('generated-code').style.cursor = 'pointer';
+    document.getElementById('generated-code').onclick = () => {
+      const code = document.getElementById('generated-code').textContent;
+      if (code === '—') return;
+      navigator.clipboard.writeText(code).then(() => showToast('Code copied', 'success'));
+    };
+  };
+
+  // Tab switching
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+    if (tab === 'receive') {
+      setTimeout(() => document.getElementById('code-input').focus(), 50);
+    } else {
+      setTimeout(() => document.getElementById('send-text').focus(), 50);
+    }
+  }
+
+  // Char counter
+  function updateCharCount() {
+    const len = document.getElementById('send-text').value.length;
+    const el = document.getElementById('char-count');
+    el.textContent = len + ' / 5000';
+    el.classList.toggle('warn', len > 4500);
+  }
+
+  // Code input — digits only
+  function onCodeInput() {
+    const el = document.getElementById('code-input');
+    el.value = el.value.replace(/\D/g, '').slice(0, 5);
+  }
+
+  // Toast
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.className = 'toast', 2800);
+  }
+
+  // TTL countdown
+  let ttlInterval;
+  function startTTL(seconds) {
+    let remaining = seconds;
+    const bar = document.getElementById('ttl-bar');
+    const count = document.getElementById('ttl-count');
+    clearInterval(ttlInterval);
+    bar.style.width = '100%';
+
+    ttlInterval = setInterval(() => {
+      remaining--;
+      count.textContent = remaining;
+      bar.style.width = ((remaining / seconds) * 100) + '%';
+      if (remaining <= 0) {
+        clearInterval(ttlInterval);
+        document.getElementById('code-result').classList.remove('visible');
+        showToast('Code expired', 'error');
+      }
+    }, 1000);
+  }
+
+  // SEND
+  async function sendPayload() {
+    const text = document.getElementById('send-text').value.trim();
+    if (!text) { showToast('Nothing to send', 'error'); return; }
+
+    const btn = document.getElementById('send-btn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">⟳</span> sending';
+
+    try {
+      const res = await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      let data;
+      try { data = await res.json(); }
+      catch { throw new Error(await res.text()); }
+      if (!res.ok) throw new Error(data.error || 'Failed');
+
+      document.getElementById('generated-code').textContent = data.code;
+      document.getElementById('code-result').classList.add('visible');
+      startTTL(90);
+      showToast('Code ready — share it fast', 'success');
+
+      // clear textarea after successful send
+      document.getElementById('send-text').value = '';
+      updateCharCount();
+
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '→ transmit';
+    }
+  }
+
+  // RECEIVE
+  async function receivePayload() {
+    const code = document.getElementById('code-input').value.trim();
+    if (code.length !== 5) { showToast('Enter a 5-digit code', 'error'); return; }
+
+    const btn = document.getElementById('receive-btn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">⟳</span> fetching';
+
+    try {
+      const res = await fetch('/get/' + code);
+
+      let data;
+      try { data = await res.json(); }
+      catch { throw new Error(await res.text()); }
+      if (!res.ok) throw new Error(data.error || 'Failed');
+
+      const out = document.getElementById('output-box');
+      out.textContent = data.text;
+      document.getElementById('output-wrap').classList.add('visible');
+      document.getElementById('copy-btn').className = 'copy-btn';
+      document.getElementById('copy-btn').textContent = '⎘ copy';
+      showToast('Payload received', 'success');
+
+    } catch (e) {
+      showToast(e.message || 'Code not found or expired', 'error');
+      document.getElementById('output-wrap').classList.remove('visible');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '→ fetch';
+    }
+  }
+
+  // COPY output
+  async function copyOutput() {
+    const text = document.getElementById('output-box').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✓ copied';
+      btn.classList.add('copied');
+      showToast('Copied to clipboard', 'success');
+      setTimeout(() => {
+        btn.textContent = '⎘ copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    } catch {
+      showToast('Copy failed — select manually', 'error');
+    }
+  }
+</script>
+</body>
+</html>
