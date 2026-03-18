@@ -9,27 +9,25 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.static("public"));
 
 // -------------------------
-// Redis setup
+// Redis setup (FIXED)
 // -------------------------
-let redis;
-let redisAvailable = true;
+let redisAvailable = false;
 
-try {
-  redis = new Redis(process.env.REDIS_URL || undefined);
+const redis = new Redis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: 3,
+  retryStrategy: (times) => Math.min(times * 50, 2000),
+                        tls: process.env.REDIS_URL?.startsWith("rediss://") ? {} : undefined,
+});
 
-  redis.on("connect", () => {
-    console.log("✅ Redis connected");
-  });
+redis.on("connect", () => {
+  console.log("✅ Redis connected");
+  redisAvailable = true;
+});
 
-  redis.on("error", (err) => {
-    console.error("❌ Redis error:", err.message);
-    redisAvailable = false;
-  });
-
-} catch (err) {
-  console.error("❌ Redis init failed:", err.message);
+redis.on("error", (err) => {
+  console.error("❌ Redis error:", err);
   redisAvailable = false;
-}
+});
 
 // -------------------------
 // Fallback store (Map)
@@ -76,10 +74,8 @@ app.post("/send", async (req, res) => {
 
   try {
     if (redisAvailable) {
-      // store in Redis with TTL
       await redis.set(code, cleanText, "EX", 90);
     } else {
-      // fallback to Map
       store.set(code, {
         text: cleanText,
         expires: Date.now() + 90 * 1000,
@@ -91,7 +87,7 @@ app.post("/send", async (req, res) => {
   } catch (err) {
     console.error("Storage error:", err);
 
-    // fallback if Redis fails suddenly
+    // fallback safety
     store.set(code, {
       text: cleanText,
       expires: Date.now() + 90 * 1000,
@@ -119,8 +115,7 @@ app.get("/get/:code", async (req, res) => {
         return res.status(404).json({ error: "Not found or expired" });
       }
 
-      await redis.del(code); // one-time use
-
+      await redis.del(code);
       return res.json({ text });
     }
 
@@ -128,7 +123,7 @@ app.get("/get/:code", async (req, res) => {
     console.error("Redis read error:", err);
   }
 
-  // fallback to Map
+  // fallback Map
   const data = store.get(code);
 
   if (!data) return res.status(404).json({ error: "Not found" });
@@ -143,7 +138,7 @@ app.get("/get/:code", async (req, res) => {
 });
 
 // -------------------------
-// Cleanup for fallback Map
+// Cleanup fallback Map
 // -------------------------
 setInterval(() => {
   if (!redisAvailable) {
