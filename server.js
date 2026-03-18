@@ -9,7 +9,7 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.static("public"));
 
 // -------------------------
-// Redis setup (FINAL FIX)
+// Redis setup
 // -------------------------
 let redisAvailable = false;
 
@@ -32,10 +32,16 @@ redis.on("connect", () => {
 redis.on("ready", () => {
   console.log("✅ Redis ready");
   redisAvailable = true;
+  console.log("Mode → Redis");
 });
 
 redis.on("error", (err) => {
   console.error("❌ Redis error:", err);
+
+  if (redisAvailable) {
+    console.log("⚠️ Switching to Memory fallback");
+  }
+
   redisAvailable = false;
 });
 
@@ -125,7 +131,7 @@ app.get("/get/:code", async (req, res) => {
         return res.status(404).json({ error: "Not found or expired" });
       }
 
-      await redis.del(code); // one-time use
+      await redis.del(code);
       return res.json({ text });
     }
 
@@ -166,5 +172,4 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`\n🚀 PassIt running at:`);
   console.log(`   Local → http://localhost:${PORT}`);
   console.log(`   LAN   → http://<your-ip>:${PORT}`);
-  console.log(`   Mode  → ${redisAvailable ? "Redis" : "Memory fallback"}\n`);
 });
