@@ -9,18 +9,28 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.static("public"));
 
 // -------------------------
-// Redis setup (FIXED)
+// Redis setup (FINAL FIX)
 // -------------------------
 let redisAvailable = false;
 
-const redis = new Redis(process.env.REDIS_URL, {
+const redisUrl = process.env.REDIS_URL;
+
+const redis = new Redis(redisUrl, {
   maxRetriesPerRequest: 3,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-                        tls: process.env.REDIS_URL?.startsWith("rediss://") ? {} : undefined,
+  retryStrategy: (times) => Math.min(times * 100, 2000),
+                        enableReadyCheck: true,
+
+                        ...(redisUrl && redisUrl.startsWith("rediss://")
+                        ? { tls: { rejectUnauthorized: false } }
+                        : {}),
 });
 
 redis.on("connect", () => {
-  console.log("✅ Redis connected");
+  console.log("🔗 Redis connected");
+});
+
+redis.on("ready", () => {
+  console.log("✅ Redis ready");
   redisAvailable = true;
 });
 
@@ -115,7 +125,7 @@ app.get("/get/:code", async (req, res) => {
         return res.status(404).json({ error: "Not found or expired" });
       }
 
-      await redis.del(code);
+      await redis.del(code); // one-time use
       return res.json({ text });
     }
 
